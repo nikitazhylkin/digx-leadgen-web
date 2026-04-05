@@ -4,12 +4,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Instrument Sans loaded via Google Fonts link in layout */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: "Instrument Sans", system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+
+  /* DigX Brand Colors */
+  --color-cyan: #00F0F4;
+  --color-cyan-dark: #00C4C8;
+  --color-magenta: #E560DF;
+  --color-cover-dark: #0A1628;
+  --color-table-header: #0E2A3B;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,73 +58,75 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* DigX Light Theme */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: #FAFBFC;
+  --foreground: #1A1A2E;
+  --card: #FFFFFF;
+  --card-foreground: #1A1A2E;
+  --popover: #FFFFFF;
+  --popover-foreground: #1A1A2E;
+  --primary: #0A1628;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F0FAFA;
+  --secondary-foreground: #0E2A3B;
+  --muted: #F0FAFA;
+  --muted-foreground: #4A5568;
+  --accent: #E8FDFD;
+  --accent-foreground: #0E2A3B;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: #E2E8F0;
+  --input: #E2E8F0;
+  --ring: #00C4C8;
+  --chart-1: #00F0F4;
+  --chart-2: #E560DF;
+  --chart-3: #00C4C8;
+  --chart-4: #0E2A3B;
+  --chart-5: #4A5568;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #1A1A2E;
+  --sidebar-primary: #0A1628;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #E8FDFD;
+  --sidebar-accent-foreground: #0A1628;
+  --sidebar-border: #E2E8F0;
+  --sidebar-ring: #00C4C8;
 }
 
+/* DigX Dark Theme */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #0A1628;
+  --foreground: #E8EAED;
+  --card: #0E2A3B;
+  --card-foreground: #E8EAED;
+  --popover: #0E2A3B;
+  --popover-foreground: #E8EAED;
+  --primary: #00F0F4;
+  --primary-foreground: #0A1628;
+  --secondary: #142238;
+  --secondary-foreground: #E8EAED;
+  --muted: #142238;
+  --muted-foreground: #8896A6;
+  --accent: #1A2D45;
+  --accent-foreground: #00F0F4;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --border: #1E3A54;
+  --input: #1E3A54;
+  --ring: #00F0F4;
+  --chart-1: #00F0F4;
+  --chart-2: #E560DF;
+  --chart-3: #00C4C8;
+  --chart-4: #4A8BA8;
+  --chart-5: #8896A6;
+  --sidebar: #0A1628;
+  --sidebar-foreground: #E8EAED;
+  --sidebar-primary: #00F0F4;
+  --sidebar-primary-foreground: #0A1628;
+  --sidebar-accent: #142238;
+  --sidebar-accent-foreground: #00F0F4;
+  --sidebar-border: #1E3A54;
+  --sidebar-ring: #00F0F4;
 }
 
 @layer base {
@@ -128,3 +140,12 @@
     @apply font-sans;
   }
 }
+
+/* DigX accent utilities */
+.text-digx-cyan { color: #00F0F4; }
+.text-digx-cyan-dark { color: #00C4C8; }
+.text-digx-magenta { color: #E560DF; }
+.bg-digx-cyan { background-color: #00F0F4; }
+.bg-digx-magenta { background-color: #E560DF; }
+.border-digx-cyan { border-color: #00F0F4; }
+.border-digx-magenta { border-color: #E560DF; }
