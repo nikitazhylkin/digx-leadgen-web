@@ -10,8 +10,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, Building2, ExternalLink, Globe, MapPin, Sparkles, User,
-  Briefcase, Cpu, TrendingUp, MessageSquare, CheckCircle,
+  Briefcase, Cpu, TrendingUp, MessageSquare, CheckCircle, Loader2, Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   new: { label: "New", className: "bg-secondary text-secondary-foreground" },
@@ -100,6 +101,8 @@ export default function LeadDetailPage() {
   const router = useRouter();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
+  const [enriching, setEnriching] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     const fetchLead = async () => {
@@ -269,14 +272,77 @@ export default function LeadDetailPage() {
 
       {/* Actions */}
       <Separator className="my-8" />
-      <div className="flex gap-3">
-        <Button variant="outline" className="hover:border-[#00C4C8] hover:text-[#00C4C8]">
-          <Sparkles className="w-4 h-4 mr-1.5" /> Enrich
+      <div className="flex gap-3 flex-wrap">
+        <Button
+          variant="outline"
+          disabled={enriching}
+          className="hover:border-[#00C4C8] hover:text-[#00C4C8]"
+          onClick={async () => {
+            setEnriching(true);
+            try {
+              const resp = await fetch("/api/enrich", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ linkedin_url: lead.linkedin_url }),
+              });
+              const data = await resp.json();
+              if (resp.ok) {
+                setLead(data.lead);
+                toast.success(`Enriched — ICP: ${data.scoring.tier} (${data.scoring.total})`);
+              } else {
+                toast.error(data.error || "Enrichment failed");
+              }
+            } catch { toast.error("Network error"); }
+            setEnriching(false);
+          }}
+        >
+          {enriching ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
+          {enriching ? "Enriching..." : "Re-enrich"}
         </Button>
-        <Button variant="outline" disabled={!lead.icp_score} className="hover:border-[#E560DF] hover:text-[#E560DF]">
-          <MessageSquare className="w-4 h-4 mr-1.5" /> Generate Messages
+
+        <Button
+          variant="outline"
+          disabled={generating || !lead.icp_score}
+          className="hover:border-[#E560DF] hover:text-[#E560DF]"
+          onClick={async () => {
+            setGenerating(true);
+            try {
+              const resp = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ lead_id: lead.id }),
+              });
+              const data = await resp.json();
+              if (resp.ok) {
+                setLead(data.lead);
+                toast.success("3 message variants generated");
+              } else {
+                toast.error(data.error || "Generation failed");
+              }
+            } catch { toast.error("Network error"); }
+            setGenerating(false);
+          }}
+        >
+          {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <MessageSquare className="w-4 h-4 mr-1.5" />}
+          {generating ? "Generating..." : "Generate Messages"}
         </Button>
-        <Button disabled={!lead.selected_message} className="bg-[#0A1628] dark:bg-[#00F0F4] text-white dark:text-[#0A1628] hover:bg-[#142238] dark:hover:bg-[#00C4C8]">
+
+        {lead.selected_message && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              navigator.clipboard.writeText(lead.selected_message || "");
+              toast.success("Message copied to clipboard");
+            }}
+          >
+            <Copy className="w-4 h-4 mr-1.5" /> Copy Message
+          </Button>
+        )}
+
+        <Button
+          disabled={!lead.selected_message}
+          className="bg-[#0A1628] dark:bg-[#00F0F4] text-white dark:text-[#0A1628] hover:bg-[#142238] dark:hover:bg-[#00C4C8]"
+        >
           <CheckCircle className="w-4 h-4 mr-1.5" /> Move to ClickUp
         </Button>
       </div>
