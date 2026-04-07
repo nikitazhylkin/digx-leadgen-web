@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, Building2, ExternalLink, Globe, MapPin, Sparkles, User,
-  Briefcase, Cpu, TrendingUp, MessageSquare, CheckCircle, Loader2, Copy,
+  Briefcase, Cpu, TrendingUp, MessageSquare, CheckCircle, Loader2, Copy, Search,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -103,6 +103,7 @@ export default function LeadDetailPage() {
   const [loading, setLoading] = useState(true);
   const [enriching, setEnriching] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [findingLinkedin, setFindingLinkedin] = useState(false);
 
   useEffect(() => {
     const fetchLead = async () => {
@@ -273,6 +274,45 @@ export default function LeadDetailPage() {
       {/* Actions */}
       <Separator className="my-8" />
       <div className="flex gap-3 flex-wrap">
+        {/* Find LinkedIn — show when lead has company but no person */}
+        {(!lead.full_name || lead.linkedin_url?.startsWith("company:")) && lead.company_name && (
+          <Button
+            variant="outline"
+            disabled={findingLinkedin}
+            className="hover:border-[#E560DF] hover:text-[#E560DF] border-[#E560DF]/30"
+            onClick={async () => {
+              setFindingLinkedin(true);
+              try {
+                const resp = await fetch("/api/find-linkedin", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    lead_id: lead.id,
+                    company_name: lead.company_name,
+                    company_description: lead.company_description,
+                  }),
+                });
+                const data = await resp.json();
+                if (resp.ok && data.found) {
+                  // Refresh lead data
+                  const { data: refreshed } = await supabase
+                    .from("leads").select("*").eq("id", lead.id).single();
+                  if (refreshed) setLead(refreshed as Lead);
+                  toast.success(`Found ${data.person_name || "contact"} — ${data.person_title || ""}`, { duration: 5000 });
+                } else if (resp.ok && !data.found) {
+                  toast.error("No LinkedIn profile found. Try Sales Navigator manually.");
+                } else {
+                  toast.error(data.error || "Search failed");
+                }
+              } catch { toast.error("Network error"); }
+              setFindingLinkedin(false);
+            }}
+          >
+            {findingLinkedin ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Search className="w-4 h-4 mr-1.5" />}
+            {findingLinkedin ? "Searching..." : "Find LinkedIn Profile"}
+          </Button>
+        )}
+
         <Button
           variant="outline"
           disabled={enriching}

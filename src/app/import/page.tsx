@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  ArrowLeft, Link2, Upload, Loader2, CheckCircle, XCircle, Sparkles, Users,
+  ArrowLeft, Link2, Upload, Loader2, CheckCircle, XCircle, Sparkles, Users, Sheet, Search,
 } from "lucide-react";
 
 interface EnrichResult {
@@ -24,6 +24,11 @@ export default function ImportPage() {
   const [bulkUrls, setBulkUrls] = useState("");
   const [results, setResults] = useState<EnrichResult[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Google Sheet import state
+  const [sheetCsv, setSheetCsv] = useState("");
+  const [sheetImporting, setSheetImporting] = useState(false);
+  const [sheetResult, setSheetResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null);
 
   const enrichSingle = async () => {
     if (!singleUrl.trim()) return;
@@ -102,6 +107,44 @@ export default function ImportPage() {
     setLoading(false);
   };
 
+  const importFromSheet = async () => {
+    if (!sheetCsv.trim()) return;
+    setSheetImporting(true);
+    setSheetResult(null);
+
+    try {
+      // Parse CSV/TSV into row objects
+      const lines = sheetCsv.trim().split("\n");
+      const headers = lines[0].split("\t").length > 1
+        ? lines[0].split("\t")
+        : lines[0].split(",");
+
+      const rows = lines.slice(1).map((line) => {
+        const values = line.split("\t").length > 1 ? line.split("\t") : line.split(",");
+        const row: Record<string, string> = {};
+        headers.forEach((h, i) => { row[h.trim()] = (values[i] || "").trim(); });
+        return row;
+      }).filter((r) => Object.values(r).some((v) => v.length > 0));
+
+      const resp = await fetch("/api/import-sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
+      const data = await resp.json();
+
+      if (resp.ok) {
+        setSheetResult(data);
+        toast.success(`Imported ${data.imported} companies. Use "Find People" in Pipeline to discover contacts.`);
+      } else {
+        toast.error(data.error || "Import failed");
+      }
+    } catch (err) {
+      toast.error("Failed to parse sheet data");
+    }
+    setSheetImporting(false);
+  };
+
   const successResults = results.filter((r) => r.status === "success");
   const errorResults = results.filter((r) => r.status === "error");
 
@@ -119,7 +162,7 @@ export default function ImportPage() {
         Add LinkedIn URLs to enrich, score, and generate outreach messages
       </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Single URL — test quality */}
         <Card className="border-l-[3px] border-l-[#00F0F4]">
           <CardHeader>
@@ -187,6 +230,59 @@ export default function ImportPage() {
                 Enrich All
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Google Sheet / Trade Show Import */}
+        <Card className="border-l-[3px] border-l-[#00C4C8]">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Sheet className="w-4 h-4 text-[#00C4C8]" />
+              Google Sheet (Companies)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-3">
+              Paste data from Google Sheets (Ctrl+C entire table). Imports companies — then use "Find People" in Pipeline to discover contacts.
+            </p>
+            <textarea
+              placeholder={"Company\tBrands\tEvent\tStand\tICP Score\tOwn Distribution\tYoung Leadership\tDescription\tICP Fit Reasons\nACME Corp\tACME\tAlimentaria\tA1\t75\t✓\t\tFamily business...\tfounder signals"}
+              value={sheetCsv}
+              onChange={(e) => setSheetCsv(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring mb-3 font-mono text-xs"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {sheetCsv.trim() ? `${sheetCsv.trim().split("\n").length - 1} rows` : "Paste with headers"}
+              </span>
+              <Button
+                onClick={importFromSheet}
+                disabled={sheetImporting || !sheetCsv.trim()}
+                variant="outline"
+                className="hover:border-[#00C4C8] hover:text-[#00C4C8]"
+              >
+                {sheetImporting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Upload className="w-4 h-4 mr-1.5" />}
+                Import Companies
+              </Button>
+            </div>
+            {sheetResult && (
+              <div className="mt-3 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-sm">
+                <p className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  ✅ {sheetResult.imported} companies imported
+                </p>
+                {sheetResult.skipped > 0 && (
+                  <p className="text-xs text-muted-foreground">{sheetResult.skipped} skipped (no company name)</p>
+                )}
+                <Button
+                  size="sm"
+                  className="mt-2 bg-[#0A1628] dark:bg-[#00F0F4] text-white dark:text-[#0A1628]"
+                  onClick={() => router.push("/")}
+                >
+                  <Search className="w-3.5 h-3.5 mr-1.5" /> Find People in Pipeline →
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
