@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { requireUser } from "@/lib/auth";
 
 /**
  * Find LinkedIn profile for a company lead using Perplexity.
@@ -12,6 +7,9 @@ const supabase = createClient(
  * their LinkedIn URL + name + title with a confidence score.
  */
 export async function POST(req: NextRequest) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
   try {
     const { lead_id, company_name, company_description } = await req.json();
     const apiKey = process.env.PERPLEXITY_API_KEY;

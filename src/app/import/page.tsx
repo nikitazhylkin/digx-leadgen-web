@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -31,28 +30,36 @@ export default function ImportPage() {
   const [sheetResult, setSheetResult] = useState<{ imported: number; skipped: number; errors: number } | null>(null);
 
   const enrichSingle = async () => {
-    if (!singleUrl.trim()) return;
+    const url = singleUrl.trim();
+    if (!url) return;
     setLoading(true);
-    setResults([{ url: singleUrl.trim(), status: "enriching" }]);
+    setResults([{ url, status: "enriching" }]);
 
     try {
-      const resp = await fetch("/api/enrich", {
+      // POST URL to /api/leads. Creates a URL-only row in Review queue;
+      // enrichment fires later when a human approves the lead via /api/qualify.
+      const resp = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ linkedin_url: singleUrl.trim() }),
+        body: JSON.stringify({ linkedin_url: url }),
       });
       const data = await resp.json();
-
       if (resp.ok) {
-        setResults([{ url: singleUrl.trim(), status: "success", lead: data.lead }]);
-        toast.success(`Enriched ${data.lead?.full_name || "lead"} — ICP: ${data.scoring?.tier} (${data.scoring?.total})`);
+        const created = (data.leads as Record<string, unknown>[])?.[0];
+        setResults([{ url, status: "success", lead: created }]);
+        toast.success(
+          data.created > 0
+            ? "Added to Review queue"
+            : "Already in Review queue"
+        );
       } else {
-        setResults([{ url: singleUrl.trim(), status: "error", error: data.error }]);
-        toast.error(data.error || "Enrichment failed");
+        setResults([{ url, status: "error", error: data.error }]);
+        toast.error(data.error || "Add failed");
       }
     } catch (err) {
-      setResults([{ url: singleUrl.trim(), status: "error", error: String(err) }]);
-      toast.error("Network error");
+      const msg = err instanceof Error ? err.message : String(err);
+      setResults([{ url, status: "error", error: msg }]);
+      toast.error(msg);
     }
     setLoading(false);
   };
@@ -72,38 +79,36 @@ export default function ImportPage() {
     const initialResults: EnrichResult[] = urls.map((url) => ({ url, status: "pending" }));
     setResults(initialResults);
 
-    // Process sequentially to avoid rate limits
-    for (let i = 0; i < urls.length; i++) {
-      setResults((prev) =>
-        prev.map((r, idx) => (idx === i ? { ...r, status: "enriching" } : r))
-      );
-
-      try {
-        const resp = await fetch("/api/enrich", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ linkedin_url: urls[i] }),
-        });
-        const data = await resp.json();
-
-        setResults((prev) =>
-          prev.map((r, idx) =>
-            idx === i
-              ? resp.ok
-                ? { ...r, status: "success", lead: data.lead }
-                : { ...r, status: "error", error: data.error }
-              : r
-          )
-        );
-      } catch (err) {
-        setResults((prev) =>
-          prev.map((r, idx) => (idx === i ? { ...r, status: "error", error: String(err) } : r))
-        );
+    // Single batch insert — /api/leads accepts an array and dedupes server-side.
+    try {
+      const resp = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedin_urls: urls }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setResults(urls.map((url) => ({ url, status: "error", error: data.error })));
+        toast.error(data.error || "Bulk add failed");
+        setLoading(false);
+        return;
       }
+      const leadsByUrl = new Map<string, Record<string, unknown>>(
+        ((data.leads as Record<string, unknown>[]) || []).map((l) => [String(l.linkedin_url), l]),
+      );
+      setResults(
+        urls.map((url) => ({
+          url,
+          status: "success",
+          lead: leadsByUrl.get(url),
+        })),
+      );
+      toast.success(`Added ${data.created} new, ${data.skipped} already in queue`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setResults(urls.map((url) => ({ url, status: "error", error: msg })));
+      toast.error(msg);
     }
-
-    const successCount = results.filter((r) => r.status === "success").length;
-    toast.success(`Enriched ${successCount}/${urls.length} leads`);
     setLoading(false);
   };
 
@@ -152,164 +157,140 @@ export default function ImportPage() {
     <div>
       <button
         onClick={() => router.push("/")}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" /> Back to pipeline
       </button>
 
-      <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2">Import Leads</h1>
-      <p className="text-sm text-muted-foreground mb-8">
-        Add LinkedIn URLs to enrich, score, and generate outreach messages
-      </p>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">Import Leads</h1>
+        <p className="text-sm text-muted-foreground mt-1 max-w-3xl">
+          Three ways in: paste one LinkedIn URL, paste a list, or start from a Google Sheet of companies.
+          URL imports add to the Review queue — Approve a lead in Pipeline to fire enrichment (Apify + Perplexity + TheirStack).
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Single URL — test quality */}
-        <Card className="border-l-[3px] border-l-[#00F0F4]">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Link2 className="w-4 h-4 text-[#00C4C8] dark:text-[#00F0F4]" />
-              Single Lead (test quality)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              Paste one LinkedIn URL to enrich and immediately see the result.
-              Use this to test enrichment quality before running bulk.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                placeholder="https://linkedin.com/in/..."
-                value={singleUrl}
-                onChange={(e) => setSingleUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && enrichSingle()}
-                className="bg-background"
-              />
-              <Button
-                onClick={enrichSingle}
-                disabled={loading || !singleUrl.trim()}
-                className="bg-[#0A1628] dark:bg-[#00F0F4] text-white dark:text-[#0A1628] hover:bg-[#142238] dark:hover:bg-[#00C4C8] shrink-0"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
-                Enrich
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-8">
+        {/* Single URL */}
+        <ImportCard
+          icon={<Link2 className="w-4 h-4" />}
+          title="Single LinkedIn URL"
+          help="Add one profile to the Review queue. Enrichment runs after you Approve it in the pipeline."
+        >
+          <div className="flex gap-2">
+            <Input
+              placeholder="https://linkedin.com/in/..."
+              value={singleUrl}
+              onChange={(e) => setSingleUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && enrichSingle()}
+              className="bg-background"
+            />
+            <Button
+              onClick={enrichSingle}
+              disabled={loading || !singleUrl.trim()}
+              className="bg-[#00C4C8] hover:bg-[#00F0F4] text-[#0A1628] border-0 shrink-0"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
+              Add
+            </Button>
+          </div>
+        </ImportCard>
 
         {/* Bulk URLs */}
-        <Card className="border-l-[3px] border-l-[#E560DF]">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#E560DF]" />
-              Bulk Import (multiple URLs)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              Paste multiple LinkedIn URLs, one per line. Each will be enriched
-              and scored sequentially.
-            </p>
-            <textarea
-              placeholder={"https://linkedin.com/in/person1\nhttps://linkedin.com/in/person2\nhttps://linkedin.com/in/person3"}
-              value={bulkUrls}
-              onChange={(e) => setBulkUrls(e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring mb-3"
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {bulkUrls.split("\n").filter((u) => u.trim().includes("linkedin")).length} URLs detected
-              </span>
-              <Button
-                onClick={enrichBulk}
-                disabled={loading || !bulkUrls.trim()}
-                variant="outline"
-                className="hover:border-[#E560DF] hover:text-[#E560DF]"
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Upload className="w-4 h-4 mr-1.5" />}
-                Enrich All
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ImportCard
+          icon={<Users className="w-4 h-4" />}
+          title="Bulk LinkedIn URLs"
+          help="Paste a list, one URL per line. All land in Review awaiting approval."
+        >
+          <textarea
+            placeholder={"https://linkedin.com/in/person1\nhttps://linkedin.com/in/person2\nhttps://linkedin.com/in/person3"}
+            value={bulkUrls}
+            onChange={(e) => setBulkUrls(e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-sm resize-none focus:outline-none focus:border-[#00C4C8] mb-3"
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {bulkUrls.split("\n").filter((u) => u.trim().includes("linkedin")).length} URLs detected
+            </span>
+            <Button
+              onClick={enrichBulk}
+              disabled={loading || !bulkUrls.trim()}
+              variant="outline"
+              className="border-[#00C4C8]/40 text-[#00F0F4] hover:bg-[#00C4C8]/20 hover:text-[#00F0F4]"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Upload className="w-4 h-4 mr-1.5" />}
+              Add all
+            </Button>
+          </div>
+        </ImportCard>
 
         {/* Google Sheet / Trade Show Import */}
-        <Card className="border-l-[3px] border-l-[#00C4C8]">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Sheet className="w-4 h-4 text-[#00C4C8]" />
-              Google Sheet (Companies)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-3">
-              Paste data from Google Sheets (Ctrl+C entire table). Imports companies — then use "Find People" in Pipeline to discover contacts.
-            </p>
-            <textarea
-              placeholder={"Company\tBrands\tEvent\tStand\tICP Score\tOwn Distribution\tYoung Leadership\tDescription\tICP Fit Reasons\nACME Corp\tACME\tAlimentaria\tA1\t75\t✓\t\tFamily business...\tfounder signals"}
-              value={sheetCsv}
-              onChange={(e) => setSheetCsv(e.target.value)}
-              rows={4}
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring mb-3 font-mono text-xs"
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {sheetCsv.trim() ? `${sheetCsv.trim().split("\n").length - 1} rows` : "Paste with headers"}
-              </span>
+        <ImportCard
+          icon={<Sheet className="w-4 h-4" />}
+          title="Google Sheet (companies)"
+          help="Paste a tab-separated table from Sheets. Imports company-only rows; people get found later in Pipeline."
+        >
+          <textarea
+            placeholder={"Company\tBrands\tEvent\tStand\tICP Score\tOwn Distribution\tYoung Leadership\tDescription\tICP Fit Reasons"}
+            value={sheetCsv}
+            onChange={(e) => setSheetCsv(e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 rounded-md border border-border bg-background text-xs font-mono resize-none focus:outline-none focus:border-[#00C4C8] mb-3"
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {sheetCsv.trim() ? `${sheetCsv.trim().split("\n").length - 1} rows` : "Paste with header row"}
+            </span>
+            <Button
+              onClick={importFromSheet}
+              disabled={sheetImporting || !sheetCsv.trim()}
+              variant="outline"
+              className="border-[#00C4C8]/40 text-[#00F0F4] hover:bg-[#00C4C8]/20 hover:text-[#00F0F4]"
+            >
+              {sheetImporting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Upload className="w-4 h-4 mr-1.5" />}
+              Import companies
+            </Button>
+          </div>
+          {sheetResult && (
+            <div className="mt-3 p-3 rounded-md bg-emerald-500/5 border border-emerald-500/20">
+              <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                {sheetResult.imported} companies imported
+              </p>
+              {sheetResult.skipped > 0 && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">{sheetResult.skipped} skipped (no company name)</p>
+              )}
               <Button
-                onClick={importFromSheet}
-                disabled={sheetImporting || !sheetCsv.trim()}
-                variant="outline"
-                className="hover:border-[#00C4C8] hover:text-[#00C4C8]"
+                size="sm"
+                className="mt-2 bg-[#00C4C8] hover:bg-[#00F0F4] text-[#0A1628] border-0"
+                onClick={() => router.push("/")}
               >
-                {sheetImporting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Upload className="w-4 h-4 mr-1.5" />}
-                Import Companies
+                <Search className="w-3.5 h-3.5 mr-1.5" /> Find people in Pipeline
               </Button>
             </div>
-            {sheetResult && (
-              <div className="mt-3 p-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-sm">
-                <p className="text-emerald-600 dark:text-emerald-400 font-medium">
-                  ✅ {sheetResult.imported} companies imported
-                </p>
-                {sheetResult.skipped > 0 && (
-                  <p className="text-xs text-muted-foreground">{sheetResult.skipped} skipped (no company name)</p>
-                )}
-                <Button
-                  size="sm"
-                  className="mt-2 bg-[#0A1628] dark:bg-[#00F0F4] text-white dark:text-[#0A1628]"
-                  onClick={() => router.push("/")}
-                >
-                  <Search className="w-3.5 h-3.5 mr-1.5" /> Find People in Pipeline →
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
+        </ImportCard>
       </div>
 
       {/* Results */}
       {results.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">
-                Enrichment Results
-              </CardTitle>
-              <div className="flex gap-2">
-                {successResults.length > 0 && (
-                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                    {successResults.length} enriched
-                  </Badge>
-                )}
-                {errorResults.length > 0 && (
-                  <Badge className="bg-red-500/10 text-red-600 dark:text-red-400">
-                    {errorResults.length} failed
-                  </Badge>
-                )}
-              </div>
+        <div className="rounded-lg bg-card border border-border p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-foreground">Enrichment results</h3>
+            <div className="flex gap-2">
+              {successResults.length > 0 && (
+                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                  {successResults.length} added
+                </Badge>
+              )}
+              {errorResults.length > 0 && (
+                <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30">
+                  {errorResults.length} failed
+                </Badge>
+              )}
             </div>
-          </CardHeader>
-          <CardContent>
+          </div>
+          <div>
             <div className="space-y-2">
               {results.map((r, i) => (
                 <div
@@ -324,8 +305,9 @@ export default function ImportPage() {
                       : "border-border"
                   }`}
                   onClick={() => {
-                    if (r.status === "success" && r.lead) {
-                      router.push(`/lead/${(r.lead as Record<string, string>).id}`);
+                    // Send the user to the Review tab where the URL-only lead awaits approval.
+                    if (r.status === "success") {
+                      router.push("/?tab=review");
                     }
                   }}
                 >
@@ -336,16 +318,14 @@ export default function ImportPage() {
                     {r.status === "pending" && <div className="w-4 h-4 rounded-full border-2 border-muted-foreground/30" />}
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        {r.status === "success" && r.lead
-                          ? `${(r.lead as Record<string, string>).full_name} — ${(r.lead as Record<string, string>).company_name_casual}`
-                          : r.url.replace("https://linkedin.com/in/", "").replace("https://www.linkedin.com/in/", "")}
+                        {r.url.replace("https://linkedin.com/in/", "").replace("https://www.linkedin.com/in/", "").replace(/\/$/, "")}
                       </p>
                       {r.error && <p className="text-xs text-red-500">{r.error}</p>}
                     </div>
                   </div>
-                  {r.status === "success" && r.lead && (
+                  {r.status === "success" && (
                     <Badge variant="outline" className="text-xs">
-                      ICP {String((r.lead as Record<string, unknown>).icp_score)} — {String((r.lead as Record<string, unknown>).icp_tier)}
+                      In Review queue
                     </Badge>
                   )}
                 </div>
@@ -354,15 +334,35 @@ export default function ImportPage() {
 
             {successResults.length > 0 && (
               <Button
-                className="mt-4 bg-[#0A1628] dark:bg-[#00F0F4] text-white dark:text-[#0A1628]"
-                onClick={() => router.push("/")}
+                className="mt-4 bg-[#00C4C8] hover:bg-[#00F0F4] text-[#0A1628] border-0"
+                onClick={() => router.push("/?tab=review")}
               >
-                View in Pipeline →
+                Review &amp; approve →
               </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
+    </div>
+  );
+}
+
+function ImportCard({ icon, title, help, children }: {
+  icon: React.ReactNode;
+  title: string;
+  help: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg bg-card border border-border p-5 flex flex-col">
+      <div className="flex items-start gap-2 mb-1.5">
+        <span className="w-7 h-7 rounded-md bg-[#00C4C8]/10 text-[#00C4C8] inline-flex items-center justify-center shrink-0 [&_svg]:w-3.5 [&_svg]:h-3.5">
+          {icon}
+        </span>
+        <h3 className="text-sm font-semibold text-foreground leading-tight pt-1">{title}</h3>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed mb-4">{help}</p>
+      <div className="mt-auto">{children}</div>
     </div>
   );
 }

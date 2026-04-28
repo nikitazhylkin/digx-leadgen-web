@@ -25,7 +25,7 @@ export default function RootLayout({
         <Providers>
           <Sidebar />
           <main className="flex-1 overflow-auto">
-            <div className="mx-auto max-w-7xl px-8 py-8">{children}</div>
+            <div className="px-6 py-6">{children}</div>
           </main>
           <Toaster />
         </Providers>

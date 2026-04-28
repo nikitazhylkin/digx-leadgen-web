@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { scoreLead } from "@/lib/scoring";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getIcpRules } from "@/lib/icp-rules";
+import { requireUser } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
   try {
     const { lead_id } = await req.json();
 
@@ -26,8 +25,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    // Score
-    const scoring = scoreLead(lead);
+    // Score (honour live ICP rules from /settings)
+    const rules = await getIcpRules();
+    const scoring = scoreLead(lead, rules);
 
     // Update
     const { data, error } = await supabase

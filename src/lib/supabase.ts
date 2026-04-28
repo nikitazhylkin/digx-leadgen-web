@@ -1,6 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
+// Backwards-compat shim for client components that import { supabase } from here.
+// Uses the SSR browser client so auth cookies are shared with middleware + API routes.
+import { createClient } from "./supabase-browser";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient();

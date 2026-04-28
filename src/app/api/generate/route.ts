@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getConfig } from "@/lib/config";
+import { requireUser } from "@/lib/auth";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
-const SARAEV_SYSTEM_PROMPT = `You are writing a LinkedIn connection request / DM from Kira Gusak, CEO of DigX Agency. DigX helps service businesses automate operations with AI — workflows, agents, and tools.
+const SARAEV_SYSTEM_PROMPT = `You are writing a LinkedIn connection request / DM from Kira Gusak, CEO of DigX Agency. DigX helps both SERVICE businesses (agencies, consulting, legal) and PRODUCT businesses (food/beverage distributors, DTC brands, wholesale) automate operations and eliminate profit leaks across their demand-to-cash flow.
 
 HARD RULES:
 1. TEXT MESSAGE TEST: Would you send this as a text to a colleague? If formal — rewrite.
@@ -14,8 +10,9 @@ HARD RULES:
 3. TONE: Lowercase, casual, sentence fragments OK. Imperfection is a feature.
 4. COMPANY NAME: Always casualized (no Inc/GmbH/Ltd).
 5. CTA: One micro-commitment question. Never "book a call."
-6. PERSONALIZATION: Cold reading based on role + industry + enrichment data.
+6. PERSONALIZATION: Cold reading based on role + industry + enrichment data. Cite ONE specific signal per message.
 7. OFFER: Lead with specific ROI. Numbers beat adjectives.
+8. SPECIFICITY: If the enrichment shows a named customer / tech tool / hiring posting, REFERENCE IT. Do not write generic copy when specific signals are present.
 
 SCORE AGAINST 7 PRINCIPLES (aim for 4+):
 1. Reciprocity — give value first
@@ -30,20 +27,25 @@ NEVER USE: "I hope this finds you well", "I noticed your profile", "As a leading
 
 Generate exactly 3 message variants as JSON array:
 [
-  {"angle": "cold_reading", "message": "...", "principles_score": N, "principles_hit": ["reciprocity", "rapport", ...]},
-  {"angle": "observation", "message": "...", "principles_score": N, "principles_hit": [...]},
-  {"angle": "value_first", "message": "...", "principles_score": N, "principles_hit": [...]}
+  {"angle": "cold_reading", "message": "...", "principles_score": N, "principles_hit": ["reciprocity", "rapport"], "signal_cited": "what specific enrichment signal you leaned on"},
+  {"angle": "observation", "message": "...", "principles_score": N, "principles_hit": [...], "signal_cited": "..."},
+  {"angle": "value_first", "message": "...", "principles_score": N, "principles_hit": [...], "signal_cited": "..."}
 ]
+
+If the enrichment context is thin (generic industry only, no specific signals), set signal_cited to "none — generic cold read". Do NOT invent signals.
 
 Return ONLY the JSON array, no markdown, no explanation.`;
 
 export async function POST(req: NextRequest) {
+  const auth = await requireUser();
+  if (!auth.ok) return auth.response;
+  const { supabase } = auth;
   try {
     const { lead_id } = await req.json();
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = await getConfig("anthropic_api_key", "ANTHROPIC_API_KEY");
 
     if (!lead_id) return NextResponse.json({ error: "lead_id is required" }, { status: 400 });
-    if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not set" }, { status: 500 });
+    if (!apiKey) return NextResponse.json({ error: "Anthropic API key not set — add it at /settings" }, { status: 500 });
 
     // Fetch lead with all enrichment data
     const { data: lead, error: fetchError } = await supabase
@@ -54,7 +56,26 @@ export async function POST(req: NextRequest) {
 
     if (fetchError || !lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
-    // Build context from enrichment data
+    // Build context from enrichment data. Prioritize structured signals over raw text.
+    const proofPointsStr = Array.isArray(lead.proof_points) && lead.proof_points.length > 0
+      ? lead.proof_points.slice(0, 6).map((p: Record<string, string>) => `${p.type}: ${p.name}`).join("; ")
+      : "";
+
+    // Hiring signals: support both legacy array + new {jobs, velocity_30d} shape
+    let hiringStr = "";
+    if (Array.isArray(lead.hiring_signals)) {
+      hiringStr = JSON.stringify(lead.hiring_signals).substring(0, 600);
+    } else if (lead.hiring_signals && typeof lead.hiring_signals === "object") {
+      const hs = lead.hiring_signals as { jobs?: Record<string, unknown>[]; velocity_30d?: number };
+      const topJobs = (hs.jobs || []).slice(0, 5);
+      hiringStr = `velocity_30d=${hs.velocity_30d ?? topJobs.length}, recent=${JSON.stringify(topJobs).substring(0, 500)}`;
+    }
+
+    // Tech stack: flatten to name list
+    const techStr = Array.isArray(lead.tech_stack) && lead.tech_stack.length > 0
+      ? (lead.tech_stack as Record<string, string>[]).slice(0, 20).map((t) => t.name || String(t)).join(", ")
+      : "";
+
     const leadContext = [
       `Name: ${lead.full_name}`,
       `Title: ${lead.headline}`,
@@ -62,14 +83,17 @@ export async function POST(req: NextRequest) {
       `Industry: ${lead.company_industry || "Unknown"}`,
       `Headcount: ${lead.company_headcount || "Unknown"}`,
       `Location: ${lead.location}`,
+      lead.category ? `ICP category: ${lead.category}` : "",
+      lead.icp_tier ? `ICP tier: ${lead.icp_tier} (score ${lead.icp_score}/100)` : "",
       lead.summary ? `LinkedIn About: ${lead.summary.substring(0, 500)}` : "",
       lead.company_description ? `Company Description: ${lead.company_description.substring(0, 500)}` : "",
-      lead.person_research ? `Person Research: ${lead.person_research.substring(0, 800)}` : "",
-      lead.company_research ? `Company Research: ${lead.company_research.substring(0, 800)}` : "",
-      lead.tech_stack ? `Tech Stack: ${JSON.stringify(lead.tech_stack).substring(0, 300)}` : "",
-      lead.hiring_signals ? `Hiring: ${JSON.stringify(lead.hiring_signals).substring(0, 300)}` : "",
-      lead.company_homepage_text ? `Homepage: ${lead.company_homepage_text.substring(0, 500)}` : "",
-    ].filter(Boolean).join("\n");
+      lead.person_research ? `Person Research (structured):\n${lead.person_research.substring(0, 1500)}` : "",
+      lead.company_research ? `Company Research (structured):\n${lead.company_research.substring(0, 1500)}` : "",
+      proofPointsStr ? `Proof Points (specific named customers / partners / case studies): ${proofPointsStr}` : "",
+      techStr ? `Tech Stack: ${techStr}` : "",
+      hiringStr ? `Hiring Signals: ${hiringStr}` : "",
+      lead.company_website_text ? `Website Content (multi-page scrape):\n${lead.company_website_text.substring(0, 3000)}` : (lead.company_homepage_text ? `Homepage:\n${lead.company_homepage_text.substring(0, 1200)}` : ""),
+    ].filter(Boolean).join("\n\n");
 
     // Call Claude
     const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {

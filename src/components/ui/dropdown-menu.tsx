@@ -53,15 +53,16 @@ function DropdownMenuGroup({ ...props }: MenuPrimitive.Group.Props) {
   return <MenuPrimitive.Group data-slot="dropdown-menu-group" {...props} />
 }
 
+// Renders as a plain <div> — MenuPrimitive.GroupLabel requires a parent
+// <Menu.Group>, which callers rarely want to add just for a visual label.
+// Using a div keeps the same visual result without the context dependency.
 function DropdownMenuLabel({
   className,
   inset,
   ...props
-}: MenuPrimitive.GroupLabel.Props & {
-  inset?: boolean
-}) {
+}: React.HTMLAttributes<HTMLDivElement> & { inset?: boolean }) {
   return (
-    <MenuPrimitive.GroupLabel
+    <div
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
