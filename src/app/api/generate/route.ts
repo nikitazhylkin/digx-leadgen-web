@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getConfig } from "@/lib/config";
 import { requireUser } from "@/lib/auth";
 
-const SARAEV_SYSTEM_PROMPT = `You are writing a LinkedIn connection request / DM from Kira Gusak, CEO of DigX Agency. DigX helps both SERVICE businesses (agencies, consulting, legal) and PRODUCT businesses (food/beverage distributors, DTC brands, wholesale) automate operations and eliminate profit leaks across their demand-to-cash flow.
+const SARAEV_SYSTEM_PROMPT = `You are writing a LinkedIn connection request / DM from the CEO of DigX Agency. DigX helps both SERVICE businesses (agencies, consulting, legal) and PRODUCT businesses (food/beverage distributors, DTC brands, wholesale) automate operations and eliminate profit leaks across their demand-to-cash flow.
 
 HARD RULES:
 1. TEXT MESSAGE TEST: Would you send this as a text to a colleague? If formal — rewrite.

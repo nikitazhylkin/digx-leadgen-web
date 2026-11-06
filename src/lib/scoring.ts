@@ -3,7 +3,7 @@
  *
  * DigX has two ICP tracks:
  *  - Service: Consulting, Agency, Legal/Fiduciary (original ICP)
- *  - Product: Wholesale, Food & Beverage, DTC/E-commerce, Consumer Goods (FIZI-style)
+ *  - Product: Wholesale, Food & Beverage, DTC/E-commerce, Consumer Goods (DTC-style)
  *
  * The scorer tries every segment profile and takes the MAX — so a food distributor
  * and a consultant can both score 25 on segment. A category-alignment bonus rewards
@@ -112,12 +112,12 @@ const HARD_EXCLUDES: HardExclude[] = [
   { keywords: ["ai agency", "automation consulting", "rpa ", "rpa,", "digital transformation consulting", "ai automation", "machine learning agency", "data science consultancy", "ai solutions provider", "chatbot agency", "artificial intelligence agency"], reason: "Competing service provider" },
   { keywords: ["restaurant owner", "chef", "restaurant manager", "cafe owner", "bar manager", "hotel general manager", "hospitality manager"], reason: "Buyer of DigX-ICP products, not DigX client" },
   { keywords: ["supermarket", "grocery store", "retail chain buyer"], reason: "Retail buyer, not product company" },
-  // Kira opted out of alcohol brands (2026-04-23). Beverage Manufacturing was the #1
+  // a teammate opted out of alcohol brands (2026-04-23). Beverage Manufacturing was the #1
   // segment clogging her queue with 80+ leads she didn't want. Revisit if we pick up
   // an alcohol-adjacent case study.
-  { keywords: ["alcohol", "brewery", "winery", "distillery", "spirits distribut", "wine distribut", "beer distribut", "liquor", "craft beer", "craft spirits", "beverage manufacturing", "wine merchant", "wine importer"], reason: "Alcohol brand — Kira opted out" },
+  { keywords: ["alcohol", "brewery", "winery", "distillery", "spirits distribut", "wine distribut", "beer distribut", "liquor", "craft beer", "craft spirits", "beverage manufacturing", "wine merchant", "wine importer"], reason: "Alcohol brand — a teammate opted out" },
 
-  // Kira's 2026-04-23 feedback: the DigX calculator is built for SERVICE businesses
+  // a teammate's 2026-04-23 feedback: the DigX calculator is built for SERVICE businesses
   // (agencies, consulting, legal) and FMCG/consumer product businesses (food, fashion,
   // cosmetics, DTC). Heavy industry and B2B industrial have "lots of processes" — sounds
   // like a fit — but the calculator's levers (revenue, order value, customer count) don't
@@ -134,7 +134,7 @@ const HARD_EXCLUDES: HardExclude[] = [
   ], reason: "Construction / building materials — outside DigX calculator fit" },
 
   { keywords: [
-    // Heavy / industrial manufacturing. Kira specifically called out tires, wood,
+    // Heavy / industrial manufacturing. a teammate specifically called out tires, wood,
     // chemicals, chair manufacturers, and fertilizer producers on 2026-04-23.
     "industrial machinery", "heavy machinery", "machinery manufacturing", "industrial equipment",
     "motor vehicle manufactur", "automotive manufactur", "tire manufactur", "tyre manufactur",
@@ -149,7 +149,7 @@ const HARD_EXCLUDES: HardExclude[] = [
     "mining", "oil and gas", "oil & gas", "petroleum", "utilities",
     "fertilizer", "agrochemical",
     "furniture and home furnishings manufactur", "furniture manufactur",
-    // HVAC / MEP — 2026-04-23 Kira rejected a HOT 75 "Wholesale" lead
+    // HVAC / MEP — 2026-04-23 a teammate rejected a HOT 75 "Wholesale" lead
     // (Jackson Systems: HVAC controls manufacturer + distributor) as Wrong industry.
     "hvac", "heating, ventilation", "refrigeration manufactur", "refrigeration distribut",
     "plumbing wholesal", "plumbing manufactur", "plumbing distribut",

@@ -1,5 +1,5 @@
 -- Phase 1 of the pipeline: manual qualification BEFORE enrichment.
--- Kira (or anyone) reviews a lead and marks it approved or rejected.
+-- a teammate (or anyone) reviews a lead and marks it approved or rejected.
 -- Only approved leads should be enriched — saves API budget.
 -- Rejection reasons accumulate as training data for future auto-qualification.
 

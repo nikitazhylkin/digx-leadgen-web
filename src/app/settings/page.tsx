@@ -360,13 +360,13 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="space-y-2 text-sm">
-            <a href="https://supabase.com/dashboard/project/your-project-ref"
+            <a href={process.env.NEXT_PUBLIC_SUPABASE_DASHBOARD_URL ?? "https://supabase.com/dashboard"}
               target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-between p-2 -mx-2 rounded-md hover:bg-accent text-foreground transition-colors">
               <span>Supabase dashboard</span>
               <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
             </a>
-            <a href="https://vercel.com/your-team/web"
+            <a href={process.env.NEXT_PUBLIC_VERCEL_DASHBOARD_URL ?? "https://vercel.com/dashboard"}
               target="_blank" rel="noopener noreferrer"
               className="flex items-center justify-between p-2 -mx-2 rounded-md hover:bg-accent text-foreground transition-colors">
               <span>Vercel deployments</span>

@@ -87,7 +87,7 @@ const QUICK_REJECT_REASONS = [
   "Wrong role / title",
   "Wrong company size",
   "Wrong geography",
-  "Wrong stage (too early)", // Kira 2026-04-23: company not ready to buy yet
+  "Wrong stage (too early)", // a teammate 2026-04-23: company not ready to buy yet
   "Not an ICP match",
   "Competitor",
   "Already a customer",
@@ -358,7 +358,7 @@ export default function PipelinePage() {
     // Includes 'request_sent' so the Approved tab count reflects leads waiting on acceptance.
     const qualifiedOutreach = ["new", "scored", "request_sent"];
     // "activeOutreach" = post-acceptance leads (connected onward). Enrichment now lives
-    // here, after the target actually connects — matches Kira's flow.
+    // here, after the target actually connects — matches a teammate's flow.
     const activeOutreach = ["connected", "enriched", "message_ready", "messaged", "sent", "replied", "converted"];
     const [review, approved, rejected, active, all] = await Promise.all([
       supabase.from("leads").select("id", { count: "exact", head: true }).is("qualification", null).in("outreach_status", qualifiedOutreach),
@@ -393,7 +393,7 @@ export default function PipelinePage() {
     loadCategories();
   }, [categoriesLoaded, loadCategories]);
 
-  // Load distinct industries (LinkedIn's company_industry taxonomy — Kira uses this to
+  // Load distinct industries (LinkedIn's company_industry taxonomy — a teammate uses this to
   // skip verticals she doesn't want to work with, e.g. Beverage Manufacturing).
   const loadIndustries = useCallback(async () => {
     const { data, error } = await supabase

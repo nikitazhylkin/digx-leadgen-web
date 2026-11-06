@@ -1,4 +1,4 @@
--- 007: Lock down RLS before Kira access.
+-- 007: Lock down RLS before a teammate access.
 --
 -- Previously leads + app_config were readable/writable by the anon key, meaning
 -- anyone who pulled NEXT_PUBLIC_SUPABASE_ANON_KEY out of the bundle could
@@ -7,7 +7,7 @@
 -- After this migration:
 --   - leads: authenticated users (logged in via Supabase Auth) get full CRUD.
 --     Anon sessions get nothing. Middleware in the Next.js app keeps the UI
---     behind /login, so in practice only Nikita + Kira (plus any future
+--     behind /login, so in practice only Nikita + a teammate (plus any future
 --     provisioned accounts) can read or write leads.
 --   - app_config: service role only. Even the authenticated web session
 --     cannot read API keys — the /api/settings + /lib/config server code

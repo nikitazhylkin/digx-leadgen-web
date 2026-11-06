@@ -1,6 +1,6 @@
 // Direct invocation of enrichLead (bypasses auth cookies) — for local testing
 // the new Perplexity prompts + TheirStack schema on one lead.
-//   npx tsx scripts/test-enrich-one.ts "https://www.linkedin.com/in/fashionjason"
+//   npx tsx scripts/test-enrich-one.ts "https://www.linkedin.com/in/example-demo-01"
 import { enrichLead } from "../src/lib/enrichment";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";

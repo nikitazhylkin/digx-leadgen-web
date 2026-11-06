@@ -1,4 +1,4 @@
--- 008: Audit log — tracks who did what. Important now that Kira is joining,
+-- 008: Audit log — tracks who did what. Important now that a teammate is joining,
 -- so any accidental mass-delete or bulk-reject has a paper trail.
 --
 -- Writes are expected from server-side mutation handlers (approve, reject,
@@ -22,7 +22,7 @@ create index if not exists audit_log_lead_id          on public.audit_log (lead_
 
 alter table public.audit_log enable row level security;
 
--- Authenticated users can read the full log (transparency between Nikita + Kira)
+-- Authenticated users can read the full log (transparency between Nikita + a teammate)
 -- but cannot write directly — the trigger below writes as the DB role, which
 -- bypasses the write policies.
 drop policy if exists "authenticated_read_audit" on public.audit_log;

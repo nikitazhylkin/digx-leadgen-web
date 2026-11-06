@@ -159,8 +159,7 @@ export function LeadDrawer({ leadId, onClose, onUpdate, onDelete, onPrev, onNext
   // "Mark as connected" — fires when Nikita sees the acceptance on LinkedIn.
   // Flips outreach_status to 'connected' + stamps connection_accepted_at, then
   // cascades into auto-generate so the personal message draft is ready within
-  // seconds of the accept. Kira's rule: "Тебе нужно в моменте кетчить его...
-  // реально в течение часа". Enrichment already ran at Approve time, so this
+  // seconds of the accept. a teammate's rule: call the lead back within the hour. Enrichment already ran at Approve time, so this
   // step skips straight to message generation.
   const markConnected = async () => {
     if (!lead) return;

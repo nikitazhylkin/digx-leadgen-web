@@ -1,6 +1,6 @@
 -- 011: Pipeline reorder to connection-first outreach.
 --
--- Context: Kira + Nikita decided the platform should only enrich leads who
+-- Context: a teammate + Nikita decided the platform should only enrich leads who
 -- actually accepted the LinkedIn connection request. Today's flow enriches
 -- everything post-approval, wasting tokens on people who never respond.
 -- New order: scored → request_sent → connected → enriched → messaged → replied.
@@ -23,7 +23,7 @@ alter table public.leads add constraint leads_outreach_status_check
     'replied', 'converted'
   ));
 
--- Backfill: any lead already marked approved has, by Kira's definition, had a
+-- Backfill: any lead already marked approved has, by a teammate's definition, had a
 -- request sent at that moment. Copy qualified_at → request_sent_at so the new
 -- analytics + the pipeline widget show correct history for existing rows, and
 -- promote their outreach_status so the "Mark as connected" button appears.

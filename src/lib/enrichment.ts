@@ -409,7 +409,7 @@ async function scrapeCompanyPages(websiteUrl: string) {
 
 // ── Perplexity ─────────────────────────────────────────────────────
 
-// Perplexity prompts rewritten 2026-04-23 after Kira reported all fields
+// Perplexity prompts rewritten 2026-04-23 after a teammate reported all fields
 // returning "limited public footprint". Root cause: old prompt was rigid-personal
 // (asking for podcasts, posts, speaking gigs) which 90% of mid-market leads
 // don't have. New approach: seed with LinkedIn URL + headline, shift focus to
@@ -719,7 +719,7 @@ export async function enrichLead(
   // The Sales Nav extension push populates seedData ahead of time — we use
   // it as-is. /import URL paste comes in with no seedData, in which case we
   // hit Apify (managed LinkedIn scraping) to get name/title/company/industry.
-  // Apify isolates Kira's account from any scraping risk.
+  // Apify isolates a teammate's account from any scraping risk.
   if (options.seedData) {
     Object.assign(data, options.seedData);
   }

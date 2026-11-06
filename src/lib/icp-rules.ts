@@ -1,7 +1,7 @@
 // ICP Rules — runtime-configurable bits of the scoring engine.
 //
 // Strategy: the *built-in* hard-exclude list, role keywords, and segment
-// profiles in scoring.ts are months of Kira's calibration. Replacing them
+// profiles in scoring.ts are months of a teammate's calibration. Replacing them
 // wholesale via the UI would be too easy to break, so this v1 editor exposes
 // only the safe-to-tune bits:
 //

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 // Readout moved from below-the-bars to inline-right to free vertical space.
 
 // 2026-04-23 reorder — connection-first flow. Enrichment moves AFTER 'connected'
-// (= target accepted). Approve button now means "request sent", matching Kira's
+// (= target accepted). Approve button now means "request sent", matching a teammate's
 // actual workflow: approve = send LinkedIn connection request, only enrich the
 // people who actually connect back.
 export const STATUS_STEPS: OutreachStatus[] = [

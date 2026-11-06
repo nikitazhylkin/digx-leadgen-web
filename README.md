@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# digx-leadgen-web
 
-## Getting Started
+A lead pipeline web app. It takes LinkedIn lead data, scores each lead against editable ICP rules, enriches the ones you approve, drafts outreach messages with Claude, and pushes qualified leads to ClickUp as tasks.
 
-First, run the development server:
+This repo ships with fictional demo data only. Every person and company in `supabase/seed.sql` is made up.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## What it does
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Pipeline table** (`/`): filter, sort and bulk-edit leads. Approve or reject each lead with a reason. Set a category per lead.
+- **Lead drawer**: full profile, enrichment, score breakdown, message variants, notes.
+- **Import** (`/import`): bring leads in from a LinkedIn profile URL list (through a Chrome extension bridge) or from a Google Sheet.
+- **Scoring** (`src/lib/scoring.ts`): deterministic ICP score from role, segment, company size, location and category. Tiers: HOT, WARM, COLD, SKIP. Rules are editable on the Settings page.
+- **Enrichment** (`src/lib/enrichment.ts`): optional company and person research through Perplexity, Apify and TheirStack.
+- **Messages** (`/api/generate`): three outreach variants per lead from the Claude API.
+- **ClickUp push** (`/api/clickup/push`): create a task for a qualified lead.
+- **Analytics** (`/analytics`) and an audit log of who did what.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Next.js 16, React 19, TypeScript, Tailwind CSS 4, shadcn/ui with base-ui, Recharts, Supabase (Postgres, Auth, row-level security).
 
-## Learn More
+## Run it locally with the demo data
 
-To learn more about Next.js, take a look at the following resources:
+You need Node.js 20 or newer and a free Supabase project.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Install: `npm install`
+2. In Supabase, run the files in `supabase/migrations/` in order (the SQL editor works).
+3. Run `supabase/seed.sql` the same way. It adds 15 fictional leads.
+4. Copy `env.example` to `.env.local` and fill in the three Supabase values. The other keys are optional.
+5. In Supabase Auth, create a user with an email and password. There is no sign-up page, accounts are created by hand.
+6. Score the demo leads: `npm install --no-save dotenv tsx` then `npx tsx scripts/rescore-all.ts`
+7. Start: `npm run dev` and open http://localhost:3000. Sign in with the user from step 5.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Enrichment, message generation and ClickUp need their own API keys (Settings page or `.env.local`). The pipeline, scoring and review screens work without them.
 
-## Deploy on Vercel
+## Notes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `scripts/test-reject.mjs` is a small browser test of the reject flow. It uses placeholder credentials (`demo@example.com`); edit them to match your local user.
+- The Chrome extension that feeds `/api/ingest-leads` lives in a separate project and is not needed for the demo.

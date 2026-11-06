@@ -50,7 +50,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full h-9 px-3 text-sm rounded-md bg-[#0A1628] border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-[#00C4C8]"
-            placeholder="you@digx.agency"
+            placeholder="you@example.com"
           />
         </div>
 
@@ -81,7 +81,7 @@ function LoginForm() {
       </form>
 
       <p className="text-center text-xs text-white/40 mt-4">
-        Accounts are provisioned manually. Contact Nikita.
+        Accounts are provisioned manually. Contact the administrator.
       </p>
     </div>
   );
