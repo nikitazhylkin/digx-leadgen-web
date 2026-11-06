@@ -10,21 +10,17 @@ This repository ships with fictional demo data only. Every person and company in
 
 ```mermaid
 flowchart TD
-    A[Paste LinkedIn URLs on /import] --> D[(Supabase: leads)]
-    B[Google Sheet of companies on /import] --> D
-    C[Chrome extension push to /api/ingest-leads] --> S[Score with scoring.ts]
-    S --> D
-    D --> R[Review tab: score, tier, filters]
-    R -->|Reject with a reason| X[Rejected tab]
-    R -->|Approve = connection request sent| Q[Approved tab, status request_sent]
-    Q -->|Not yet scored| E
-    Q -->|Mark as connected| E[Enrich: Apify, website scrape, Perplexity, TheirStack]
-    E --> S2[Score again]
-    S2 --> G[Draft 3 messages with Claude]
-    G --> M[Pick and send the message by hand]
-    M --> Y[Lead replies, marked replied]
-    Y --> P[Push to ClickUp, status converted]
+    A[Paste LinkedIn links] --> D[Leads table]
+    B[Google Sheet of companies] --> D
+    C[Browser extension<br/>pushes leads] --> D
+    D --> E[A person reviews<br/>each lead and its score]
+    E -->|Approve| F[Enrich the lead<br/>and score it again]
+    F --> G[Claude drafts<br/>3 messages]
+    G --> H[A person sends one by hand<br/>and the lead replies]
+    H --> I[Task created in ClickUp]
 ```
+
+In the diagram, a rejected lead leaves the flow and goes to the Rejected tab. Where the score comes from depends on the way in. Leads from the extension are scored on arrival with the ICP rules. Pasted links start with no score. Sheet rows keep the score from the sheet. Approve marks the lead as `request_sent`. Enrichment runs on approval when the lead has no score yet, and again when you mark the lead as connected. Enrichment calls Apify, a website scrape, Perplexity and TheirStack. The drafts are saved as `message_ready`. The ClickUp push sets the status to `converted`. The app never sends a message itself.
 
 The browser extension that feeds `/api/ingest-leads` is not part of this repository. The other two entry points work without it.
 
