@@ -167,7 +167,7 @@ export default function AnalyticsPage() {
         else if (action === "reject") perUserMap[a].reject += 1;
       });
       setPerUser(Object.entries(perUserMap).map(([actor, v]) => ({
-        actor: actor.split("@")[0],  // short-form "nikita" / "kira"
+        actor: actor.split("@")[0],  // short-form user name
         ...v,
       })));
 
